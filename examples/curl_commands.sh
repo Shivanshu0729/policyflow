@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Base URL
 BASE_URL="http://127.0.0.1:8000/api"
 
 echo "=== 1. Health Check ==="
@@ -25,7 +24,6 @@ echo -e "\n=== 5. Get Policy Details with Audit Trail ==="
 curl -s -X GET "${BASE_URL}/policy-requests/1" | jq .
 
 echo -e "\n=== 6. Submit Issuance (TIMEOUT_AFTER_ISSUE Scenario) ==="
-# Intake a second request
 curl -s -X POST "${BASE_URL}/policy-requests" \
   -H "Content-Type: application/json" \
   -d '{
@@ -40,7 +38,6 @@ curl -s -X POST "${BASE_URL}/policy-requests" \
     "sum_insured": 100000
   }' | jq .
 
-# Submit with TIMEOUT_AFTER_ISSUE (Expects 202 and status NEEDS_RECONCILIATION)
 curl -s -X POST "${BASE_URL}/policy-requests/2/submit" \
   -H "Content-Type: application/json" \
   -d '{"scenario": "TIMEOUT_AFTER_ISSUE"}' | jq .

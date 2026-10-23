@@ -13,9 +13,6 @@ class MockInsurerCallbackController extends Controller
         protected ReconciliationService $reconciliationService
     ) {}
 
-    /**
-     * Receive and validate simulated provider callback events.
-     */
     public function handle(ProviderCallbackRequest $request): JsonResponse
     {
         $result = $this->reconciliationService->processCallback($request->validated());

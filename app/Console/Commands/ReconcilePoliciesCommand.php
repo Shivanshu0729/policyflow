@@ -9,19 +9,11 @@ use Illuminate\Console\Command;
 
 class ReconcilePoliciesCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     */
+
     protected $signature = 'policyflow:reconcile {--id= : Optional specific policy request ID to reconcile}';
 
-    /**
-     * The console command description.
-     */
     protected $description = 'Reconcile pending or indeterminate policy requests against provider records';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(ReconciliationService $reconciliationService): int
     {
         $id = $this->option('id');

@@ -6,9 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+
     public function up(): void
     {
         Schema::create('policy_requests', function (Blueprint $table) {
@@ -17,12 +15,12 @@ return new class extends Migration
             $table->string('agent_id', 100);
             $table->string('customer_name', 150);
             $table->date('date_of_birth');
-            $table->string('destination', 50); // DOMESTIC, INTERNATIONAL
+            $table->string('destination', 50);
             $table->date('trip_start');
             $table->date('trip_end');
-            $table->string('plan_code', 50); // BASIC, PLUS, PREMIUM
-            $table->unsignedInteger('sum_insured'); // 100000, 300000, 500000
-            $table->string('status', 50)->default('RECEIVED')->index(); // RECEIVED, VALIDATED, SUBMITTED, PENDING_CONFIRMATION, ISSUED, FAILED, NEEDS_RECONCILIATION
+            $table->string('plan_code', 50);
+            $table->unsignedInteger('sum_insured');
+            $table->string('status', 50)->default('RECEIVED')->index();
             $table->decimal('premium_amount', 10, 2);
             $table->string('premium_currency', 10)->default('INR');
             $table->json('premium_calculation_snapshot');
@@ -34,7 +32,6 @@ return new class extends Migration
             $table->timestamp('reconciled_at')->nullable();
             $table->timestamps();
 
-            // Enforce uniqueness on the combination of agent_id and client_request_id
             $table->unique(['agent_id', 'client_request_id'], 'uniq_agent_client_req');
         });
 
@@ -43,7 +40,7 @@ return new class extends Migration
             $table->foreignId('policy_request_id')->constrained('policy_requests')->cascadeOnDelete();
             $table->unsignedInteger('attempt_number')->default(1);
             $table->string('idempotency_key', 150)->index();
-            $table->string('status', 50); // STARTED, SUCCESS, TEMPORARY_FAILURE, TIMEOUT, FAILED
+            $table->string('status', 50);
             $table->string('provider_reference', 100)->nullable()->index();
             $table->json('request_payload')->nullable();
             $table->json('response_payload')->nullable();
@@ -54,12 +51,12 @@ return new class extends Migration
 
         Schema::create('provider_events', function (Blueprint $table) {
             $table->id();
-            $table->string('event_id', 150)->unique(); // Database-enforced provider event uniqueness
-            $table->string('event_type', 100); // POLICY_ISSUED, POLICY_REJECTED
+            $table->string('event_id', 150)->unique();
+            $table->string('event_type', 100);
             $table->foreignId('policy_request_id')->nullable()->constrained('policy_requests')->nullOnDelete();
             $table->string('provider_reference', 100)->nullable()->index();
             $table->json('payload');
-            $table->string('processing_status', 50)->default('PROCESSED'); // PROCESSED, IGNORED, FAILED
+            $table->string('processing_status', 50)->default('PROCESSED');
             $table->timestamp('processed_at')->nullable();
             $table->timestamps();
         });
@@ -69,7 +66,7 @@ return new class extends Migration
             $table->foreignId('policy_request_id')->constrained('policy_requests')->cascadeOnDelete();
             $table->string('from_state', 50);
             $table->string('to_state', 50);
-            $table->string('trigger', 100); // INTAKE, VALIDATION_PASSED, SUBMIT_ISSUANCE, PROVIDER_CALLBACK, RECONCILIATION
+            $table->string('trigger', 100);
             $table->text('reason')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
@@ -77,7 +74,6 @@ return new class extends Migration
             $table->index(['policy_request_id', 'created_at']);
         });
 
-        // Independent Mock Insurer records (persistent ledger simulating external insurer backend)
         Schema::create('mock_insurer_policies', function (Blueprint $table) {
             $table->id();
             $table->string('provider_reference', 100)->unique();
@@ -89,7 +85,7 @@ return new class extends Migration
             $table->string('plan_code', 50);
             $table->unsignedInteger('sum_insured');
             $table->decimal('premium_amount', 10, 2);
-            $table->string('status', 50)->default('ISSUED'); // ISSUED, PENDING, REJECTED
+            $table->string('status', 50)->default('ISSUED');
             $table->string('scenario_applied', 50);
             $table->string('callback_url', 255)->nullable();
             $table->timestamps();
@@ -105,9 +101,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('mock_insurer_logs');

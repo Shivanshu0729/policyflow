@@ -24,17 +24,14 @@ class IssuanceOrchestrationService
         protected PolicyStateMachine $stateMachine
     ) {}
 
-    /**
-     * Submit policy issuance to the insurer safely and idempotently.
-     */
     public function submit(PolicyRequest $policyRequest, ?string $scenario = null): PolicyRequest
     {
-        // 1. Concurrency guard and state validation with row lock
+
         $attemptData = DB::transaction(function () use ($policyRequest) {
             $locked = PolicyRequest::where('id', $policyRequest->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status === PolicyStatus::ISSUED) {
-                // Already issued: return immediately without calling provider
+
                 return ['status' => 'ALREADY_ISSUED', 'request' => $locked];
             }
 
@@ -46,7 +43,6 @@ class IssuanceOrchestrationService
                 return ['status' => 'NEEDS_RECONCILIATION', 'request' => $locked];
             }
 
-            // Valid states to submit from: VALIDATED, or FAILED (safe retry)
             if (! in_array($locked->status, [PolicyStatus::VALIDATED, PolicyStatus::FAILED], true)) {
                 throw new InvalidStateTransitionException(
                     fromState: $locked->status->value,
@@ -58,7 +54,6 @@ class IssuanceOrchestrationService
             $attemptNumber = $locked->issuanceAttempts()->count() + 1;
             $idempotencyKey = 'IDEM-' . $locked->id . '-ATTEMPT-' . $attemptNumber . '-' . Str::random(8);
 
-            // Transition to SUBMITTED
             $this->stateMachine->transition(
                 policyRequest: $locked,
                 toState: PolicyStatus::SUBMITTED,
@@ -67,7 +62,6 @@ class IssuanceOrchestrationService
                 metadata: ['attempt_number' => $attemptNumber, 'idempotency_key' => $idempotencyKey]
             );
 
-            // Record initial attempt
             $attempt = IssuanceAttempt::create([
                 'policy_request_id' => $locked->id,
                 'attempt_number' => $attemptNumber,
@@ -95,13 +89,11 @@ class IssuanceOrchestrationService
             return $attemptData['request'];
         }
 
-        /** @var PolicyRequest $request */
         $request = $attemptData['request'];
-        /** @var IssuanceAttempt $attempt */
+
         $attempt = $attemptData['attempt'];
         $idempotencyKey = $attemptData['idempotencyKey'];
 
-        // 2. Call the external insurer outside the main DB lock to avoid holding DB connections
         try {
             $response = $this->insurerClient->submitPolicy([
                 'idempotency_key' => $idempotencyKey,
@@ -117,10 +109,7 @@ class IssuanceOrchestrationService
             return $this->handleProviderResponse($request, $attempt, $response);
 
         } catch (ProviderTimeoutException $e) {
-            // HIGH-PRIORITY RELIABILITY CASE:
-            // A timeout occurred. We do NOT know if the insurer processed the request or not!
-            // We MUST NOT mark this as FAILED, nor try to issue a new policy immediately.
-            // We transition to NEEDS_RECONCILIATION so status lookup can check the insurer ledger.
+
             Log::warning("Provider timeout encountered for policy_request #{$request->id}: {$e->getMessage()}");
 
             return DB::transaction(function () use ($request, $attempt, $e) {
@@ -151,7 +140,7 @@ class IssuanceOrchestrationService
             });
 
         } catch (ProviderCommunicationException $e) {
-            // Temporary communication error (e.g. 503 gateway unavailable)
+
             Log::error("Provider communication failure for policy_request #{$request->id}: {$e->getMessage()}");
 
             return DB::transaction(function () use ($request, $attempt, $e) {
@@ -208,9 +197,6 @@ class IssuanceOrchestrationService
         }
     }
 
-    /**
-     * Process normal provider response.
-     */
     protected function handleProviderResponse(
         PolicyRequest $request,
         IssuanceAttempt $attempt,

@@ -14,9 +14,6 @@ class PolicyReconciliationController extends Controller
         protected ReconciliationService $reconciliationService
     ) {}
 
-    /**
-     * Manually trigger reconciliation for a pending or needs-reconciliation request.
-     */
     public function reconcile(int|string $id): JsonResponse
     {
         $policyRequest = PolicyRequest::find($id);
@@ -44,9 +41,6 @@ class PolicyReconciliationController extends Controller
         ], 200);
     }
 
-    /**
-     * Inspect status in the mock insurer's persistent records.
-     */
     public function insurerStatusLookup(string $providerReference): JsonResponse
     {
         $policy = MockInsurerPolicy::where('provider_reference', $providerReference)->first();

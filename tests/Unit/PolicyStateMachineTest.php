@@ -46,15 +46,12 @@ class PolicyStateMachineTest extends TestCase
     {
         $req = $this->createSampleRequest(PolicyStatus::RECEIVED);
 
-        // RECEIVED -> VALIDATED
         $this->stateMachine->transition($req, PolicyStatus::VALIDATED, 'TEST_VALIDATE', 'Valid input');
         $this->assertEquals(PolicyStatus::VALIDATED, $req->fresh()->status);
 
-        // VALIDATED -> SUBMITTED
         $this->stateMachine->transition($req, PolicyStatus::SUBMITTED, 'TEST_SUBMIT', 'Submitted to provider');
         $this->assertEquals(PolicyStatus::SUBMITTED, $req->fresh()->status);
 
-        // SUBMITTED -> ISSUED
         $this->stateMachine->transition($req, PolicyStatus::ISSUED, 'TEST_ISSUANCE', 'Issued by provider', [
             'policy_number' => 'POL-TEST-1234',
             'provider_reference' => 'PROV-REF-1',
@@ -62,7 +59,6 @@ class PolicyStateMachineTest extends TestCase
         $this->assertEquals(PolicyStatus::ISSUED, $req->fresh()->status);
         $this->assertEquals('POL-TEST-1234', $req->fresh()->policy_number);
 
-        // Check history records
         $this->assertCount(3, $req->stateHistory);
         $this->assertEquals('RECEIVED', $req->stateHistory[0]->from_state);
         $this->assertEquals('VALIDATED', $req->stateHistory[0]->to_state);
@@ -76,7 +72,6 @@ class PolicyStateMachineTest extends TestCase
     {
         $req = $this->createSampleRequest(PolicyStatus::RECEIVED);
 
-        // Cannot transition directly from RECEIVED to ISSUED
         $this->expectException(InvalidStateTransitionException::class);
         $this->stateMachine->transition($req, PolicyStatus::ISSUED, 'ILLEGAL_JUMP');
     }
@@ -87,7 +82,6 @@ class PolicyStateMachineTest extends TestCase
         $req->policy_number = 'POL-CONFIRMED-999';
         $req->save();
 
-        // Never allow ISSUED -> SUBMITTED
         $this->expectException(InvalidStateTransitionException::class);
         $this->stateMachine->transition($req, PolicyStatus::SUBMITTED, 'ATTEMPT_REGRESSION');
     }
@@ -98,7 +92,6 @@ class PolicyStateMachineTest extends TestCase
         $req->policy_number = 'POL-CONFIRMED-999';
         $req->save();
 
-        // Never allow ISSUED -> FAILED
         $this->expectException(InvalidStateTransitionException::class);
         $this->stateMachine->transition($req, PolicyStatus::FAILED, 'STALE_CALLBACK_FAILURE');
     }

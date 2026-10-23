@@ -6,7 +6,7 @@ class ProviderResponse
 {
     public function __construct(
         public readonly bool $success,
-        public readonly string $status, // ISSUED, PENDING, FAILED, TIMEOUT
+        public readonly string $status,
         public readonly string $providerReference,
         public readonly ?string $policyNumber = null,
         public readonly ?string $errorCode = null,

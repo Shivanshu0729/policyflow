@@ -17,18 +17,11 @@ class RequestIdempotencyService
         protected PremiumCalculationService $pricingService
     ) {}
 
-    /**
-     * Intake policy request idempotently.
-     *
-     * @param array $payload Validated input payload
-     * @return array{request: PolicyRequest, is_new: bool}
-     */
     public function processIntake(array $payload): array
     {
         $agentId = (string) $payload['agent_id'];
         $clientRequestId = (string) $payload['client_request_id'];
 
-        // 1. Fast-path lookup for identical retries
         $existing = PolicyRequest::where('agent_id', $agentId)
             ->where('client_request_id', $clientRequestId)
             ->first();
@@ -40,7 +33,6 @@ class RequestIdempotencyService
             ];
         }
 
-        // 2. Fresh request: calculate premium and snapshot
         $pricing = $this->pricingService->calculate(
             planCode: $payload['plan_code'],
             tripStart: $payload['trip_start'],
@@ -52,7 +44,7 @@ class RequestIdempotencyService
 
         try {
             return DB::transaction(function () use ($payload, $pricing, $agentId, $clientRequestId) {
-                // Re-check with row lock inside transaction to protect against concurrent intake
+
                 $existingInside = PolicyRequest::where('agent_id', $agentId)
                     ->where('client_request_id', $clientRequestId)
                     ->lockForUpdate()
@@ -81,7 +73,6 @@ class RequestIdempotencyService
                     'premium_calculation_snapshot' => $pricing['snapshot'],
                 ]);
 
-                // Record initial state history: RECEIVED -> VALIDATED
                 PolicyStateHistory::create([
                     'policy_request_id' => $policyRequest->id,
                     'from_state' => PolicyStatus::RECEIVED->value,
@@ -100,7 +91,7 @@ class RequestIdempotencyService
                 ];
             });
         } catch (QueryException $e) {
-            // Safe handling of race conditions hitting the DB unique constraint
+
             if ($this->isUniqueConstraintViolation($e)) {
                 Log::info("Handled concurrent intake collision safely for agent {$agentId}, request {$clientRequestId}");
                 $recovered = PolicyRequest::where('agent_id', $agentId)
@@ -119,9 +110,6 @@ class RequestIdempotencyService
         }
     }
 
-    /**
-     * Check if exception is a unique key violation.
-     */
     protected function isUniqueConstraintViolation(QueryException $e): bool
     {
         $code = (string) $e->getCode();

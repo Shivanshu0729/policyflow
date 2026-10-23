@@ -31,7 +31,6 @@ class PolicyIssuanceTest extends TestCase
     {
         $policyRequest = $this->createValidatedRequest('REQ-SUCCESS-1');
 
-        // Submit for issuance (default scenario = SUCCESS)
         $response = $this->postJson("/api/policy-requests/{$policyRequest->id}/submit", [
             'scenario' => 'SUCCESS',
         ]);
@@ -48,13 +47,11 @@ class PolicyIssuanceTest extends TestCase
         $this->assertNotEmpty($policyNumber);
         $this->assertNotEmpty($providerRef);
 
-        // Verify request updated
         $fresh = $policyRequest->fresh();
         $this->assertEquals('ISSUED', $fresh->status->value);
         $this->assertEquals($policyNumber, $fresh->policy_number);
         $this->assertEquals($providerRef, $fresh->provider_reference);
 
-        // Exactly one issuance attempt recorded
         $this->assertCount(1, $fresh->issuanceAttempts);
         $this->assertEquals('ISSUED', $fresh->issuanceAttempts->first()->status);
     }
@@ -63,12 +60,10 @@ class PolicyIssuanceTest extends TestCase
     {
         $policyRequest = $this->createValidatedRequest('REQ-REPEAT-ISSUE');
 
-        // First submit -> ISSUED
         $firstResponse = $this->postJson("/api/policy-requests/{$policyRequest->id}/submit", ['scenario' => 'SUCCESS']);
         $firstResponse->assertStatus(200);
         $originalPolicyNumber = $firstResponse->json('data.policy_number');
 
-        // Second submit -> returns existing policy without re-submitting to provider
         $secondResponse = $this->postJson("/api/policy-requests/{$policyRequest->id}/submit", ['scenario' => 'SUCCESS']);
         $secondResponse->assertStatus(200)
             ->assertJson([
@@ -77,7 +72,6 @@ class PolicyIssuanceTest extends TestCase
 
         $this->assertEquals($originalPolicyNumber, $secondResponse->json('data.policy_number'));
 
-        // Still exactly one attempt
         $this->assertCount(1, $policyRequest->fresh()->issuanceAttempts);
     }
 
@@ -85,7 +79,6 @@ class PolicyIssuanceTest extends TestCase
     {
         $policyRequest = $this->createValidatedRequest('REQ-TEMP-FAIL');
 
-        // Submit with TEMPORARY_FAILURE scenario
         $response = $this->postJson("/api/policy-requests/{$policyRequest->id}/submit", [
             'scenario' => 'TEMPORARY_FAILURE',
         ]);
@@ -98,7 +91,6 @@ class PolicyIssuanceTest extends TestCase
         $this->assertCount(1, $fresh->issuanceAttempts);
         $this->assertEquals('TEMPORARY_FAILURE', $fresh->issuanceAttempts->first()->status);
 
-        // Safe retry from FAILED: Now submit with SUCCESS scenario
         $retryResponse = $this->postJson("/api/policy-requests/{$policyRequest->id}/submit", [
             'scenario' => 'SUCCESS',
         ]);
@@ -112,7 +104,7 @@ class PolicyIssuanceTest extends TestCase
         $freshAfterRetry = $policyRequest->fresh();
         $this->assertEquals('ISSUED', $freshAfterRetry->status->value);
         $this->assertNotNull($freshAfterRetry->policy_number);
-        // Two attempts total: first failed, second succeeded
+
         $this->assertCount(2, $freshAfterRetry->issuanceAttempts);
     }
 

@@ -70,7 +70,6 @@ class PolicyIntakeTest extends TestCase
         $this->assertEquals('225.00', $response->json('data.premium.amount'));
         $this->assertFalse($response->json('is_retry'));
 
-        // Assert database record exists
         $this->assertDatabaseHas('policy_requests', [
             'client_request_id' => 'CLIENT-REQ-1001',
             'agent_id' => 'AGENT-42',
@@ -83,12 +82,10 @@ class PolicyIntakeTest extends TestCase
     {
         $payload = $this->validPayload();
 
-        // 1st request -> 201 Created
         $firstResponse = $this->postJson('/api/policy-requests', $payload);
         $firstResponse->assertStatus(201);
         $firstId = $firstResponse->json('data.id');
 
-        // 2nd identical request -> 200 OK
         $secondResponse = $this->postJson('/api/policy-requests', $payload);
         $secondResponse->assertStatus(200);
 
@@ -96,13 +93,12 @@ class PolicyIntakeTest extends TestCase
         $this->assertEquals($firstId, $secondResponse->json('data.id'));
         $this->assertEquals('225.00', $secondResponse->json('data.premium.amount'));
 
-        // Only 1 record in database
         $this->assertEquals(1, PolicyRequest::where('agent_id', 'AGENT-42')->where('client_request_id', 'CLIENT-REQ-1001')->count());
     }
 
     public function test_invalid_travel_dates_are_rejected_with_http_422(): void
     {
-        // trip_end before trip_start
+
         $response = $this->postJson('/api/policy-requests', $this->validPayload([
             'trip_start' => '2026-11-15',
             'trip_end' => '2026-11-10',

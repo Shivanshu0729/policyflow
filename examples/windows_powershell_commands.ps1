@@ -1,4 +1,3 @@
-# PolicyFlow Windows PowerShell Demo Script
 $BaseUrl = "http://127.0.0.1:8000/api"
 
 Write-Host "`n=== 1. Health Check ===" -ForegroundColor Cyan

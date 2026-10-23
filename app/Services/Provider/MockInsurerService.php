@@ -11,20 +11,16 @@ use Illuminate\Support\Str;
 
 class MockInsurerService implements InsurerClientInterface
 {
-    /**
-     * Submit policy issuance request to the simulated external insurer.
-     */
+
     public function submitPolicy(array $data, ?string $scenario = null): ProviderResponse
     {
         $selectedScenario = $scenario ?: (config('policyflow.mock_scenario') ?: MockScenario::SUCCESS->value);
 
-        // Deterministic or generated provider reference
         $providerRef = 'MOCK-PROV-' . strtoupper(Str::random(10));
         $idempotencyKey = $data['idempotency_key'] ?? ('IDEM-' . Str::uuid());
         $clientRequestId = $data['client_request_id'] ?? 'REQ-UNKNOWN';
         $agentId = $data['agent_id'] ?? 'AGT-UNKNOWN';
 
-        // Check if this idempotency key was already submitted to the insurer
         $existing = MockInsurerPolicy::where('idempotency_key', $idempotencyKey)->first();
         if ($existing) {
             MockInsurerLog::create([
@@ -63,9 +59,7 @@ class MockInsurerService implements InsurerClientInterface
                 );
 
             case MockScenario::TIMEOUT_AFTER_ISSUE->value:
-                // CRUCIAL RELIABILITY SCENARIO:
-                // The insurer receives the request, successfully generates and saves the policy in its OWN persistent database,
-                // but the network connection breaks or the client times out while waiting for HTTP response!
+
                 $policyNumber = 'INSU-' . date('Ymd') . '-' . strtoupper(Str::random(8));
 
                 MockInsurerPolicy::create([
@@ -90,14 +84,13 @@ class MockInsurerService implements InsurerClientInterface
                     'response_payload' => ['status' => 'ISSUED_IN_PROVIDER_LEDGER_BUT_TIMEOUT_DELIVERED'],
                 ]);
 
-                // Simulate client timeout
                 throw new ProviderTimeoutException(
                     message: "Connection timed out after 30000ms while waiting for provider response.",
                     providerReference: $providerRef
                 );
 
             case MockScenario::DELAYED_CALLBACK->value:
-                // Provider accepts the request, marks it PENDING in its records, and will confirm later via callback
+
                 MockInsurerPolicy::create([
                     'provider_reference' => $providerRef,
                     'idempotency_key' => $idempotencyKey,
@@ -172,9 +165,6 @@ class MockInsurerService implements InsurerClientInterface
         }
     }
 
-    /**
-     * Check status of a policy in provider's persistent records (for reconciliation).
-     */
     public function checkStatus(string $providerReference): ProviderResponse
     {
         $record = MockInsurerPolicy::where('provider_reference', $providerReference)->first();

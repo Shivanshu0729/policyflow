@@ -16,9 +16,6 @@ class PolicySubmissionController extends Controller
         protected IssuanceOrchestrationService $issuanceService
     ) {}
 
-    /**
-     * Start issuance or safely resume an eligible workflow.
-     */
     public function submit(SubmitPolicyRequest $request, int|string $id): JsonResponse
     {
         $policyRequest = PolicyRequest::find($id);
@@ -30,7 +27,6 @@ class PolicySubmissionController extends Controller
             ], 404);
         }
 
-        // Check if already issued
         if ($policyRequest->status === PolicyStatus::ISSUED) {
             return response()->json([
                 'status' => 'already_issued',
@@ -44,7 +40,6 @@ class PolicySubmissionController extends Controller
             ], 200);
         }
 
-        // Scenario can be specified via request body or X-Mock-Scenario HTTP header
         $scenario = $request->input('scenario') ?: $request->header('X-Mock-Scenario');
 
         try {

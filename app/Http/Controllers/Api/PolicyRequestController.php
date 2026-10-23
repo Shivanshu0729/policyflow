@@ -15,9 +15,6 @@ class PolicyRequestController extends Controller
         protected RequestIdempotencyService $idempotencyService
     ) {}
 
-    /**
-     * Intake endpoint: Create a new request or return an existing logical request idempotently.
-     */
     public function store(StorePolicyRequest $request): JsonResponse
     {
         $result = $this->idempotencyService->processIntake($request->validated());
@@ -35,9 +32,6 @@ class PolicyRequestController extends Controller
         ], $statusCode);
     }
 
-    /**
-     * Retrieve a single policy request with its premium, status, history, and attempts.
-     */
     public function show(int|string $id): JsonResponse
     {
         $policyRequest = PolicyRequest::with(['stateHistory', 'issuanceAttempts', 'providerEvents'])->find($id);
@@ -55,9 +49,6 @@ class PolicyRequestController extends Controller
         ], 200);
     }
 
-    /**
-     * List policy requests with optional status filtering and pagination.
-     */
     public function index(Request $request): JsonResponse
     {
         $query = PolicyRequest::query()->orderBy('created_at', 'desc');
@@ -85,9 +76,6 @@ class PolicyRequestController extends Controller
         ], 200);
     }
 
-    /**
-     * Format policy request for consistent API response.
-     */
     protected function formatPolicyRequest(PolicyRequest $req, bool $includeDetails = false): array
     {
         $data = [

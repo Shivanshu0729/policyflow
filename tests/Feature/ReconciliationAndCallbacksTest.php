@@ -28,7 +28,6 @@ class ReconciliationAndCallbacksTest extends TestCase
 
         $id = $intake->json('data.id');
 
-        // Submit with DELAYED_CALLBACK to put it in PENDING_CONFIRMATION
         $this->postJson("/api/policy-requests/{$id}/submit", [
             'scenario' => 'DELAYED_CALLBACK',
         ]);
@@ -43,7 +42,6 @@ class ReconciliationAndCallbacksTest extends TestCase
         $this->assertEquals('PENDING_CONFIRMATION', $policyRequest->status->value);
         $providerRef = $policyRequest->provider_reference;
 
-        // Simulate external provider callback
         $callbackResponse = $this->postJson('/api/mock-insurer/callback', [
             'event_id' => 'EVT-CB-001',
             'provider_reference' => $providerRef,
@@ -65,7 +63,6 @@ class ReconciliationAndCallbacksTest extends TestCase
         $this->assertEquals('ISSUED', $fresh->status->value);
         $this->assertEquals('POL-PROVIDER-CONFIRMED-1', $fresh->policy_number);
 
-        // Verify provider_events record
         $this->assertDatabaseHas('provider_events', [
             'event_id' => 'EVT-CB-001',
             'processing_status' => 'PROCESSED',
@@ -85,12 +82,10 @@ class ReconciliationAndCallbacksTest extends TestCase
             'event_type' => 'POLICY_ISSUED',
         ];
 
-        // 1st delivery
         $res1 = $this->postJson('/api/mock-insurer/callback', $callbackPayload);
         $res1->assertStatus(200);
         $this->assertEquals('PROCESSED', $res1->json('result.status'));
 
-        // 2nd delivery of the EXACT same callback
         $res2 = $this->postJson('/api/mock-insurer/callback', $callbackPayload);
         $res2->assertStatus(200)
             ->assertJson([
@@ -100,12 +95,10 @@ class ReconciliationAndCallbacksTest extends TestCase
                 ],
             ]);
 
-        // 3rd delivery
         $res3 = $this->postJson('/api/mock-insurer/callback', $callbackPayload);
         $res3->assertStatus(200);
         $this->assertEquals('DUPLICATE_IGNORED', $res3->json('result.status'));
 
-        // Event exists only once in provider_events
         $this->assertEquals(1, ProviderEvent::where('event_id', 'EVT-DUP-999')->count());
         $this->assertEquals('POL-DUP-1', $policyRequest->fresh()->policy_number);
     }
@@ -115,7 +108,6 @@ class ReconciliationAndCallbacksTest extends TestCase
         $policyRequest = $this->createPendingRequest('REQ-NO-DOWNGRADE');
         $providerRef = $policyRequest->provider_reference;
 
-        // First issue it successfully
         $this->postJson('/api/mock-insurer/callback', [
             'event_id' => 'EVT-LEGIT-1',
             'provider_reference' => $providerRef,
@@ -125,7 +117,6 @@ class ReconciliationAndCallbacksTest extends TestCase
 
         $this->assertEquals('ISSUED', $policyRequest->fresh()->status->value);
 
-        // Now deliver a conflicting/stale REJECTED callback with a different event ID
         $staleResponse = $this->postJson('/api/mock-insurer/callback', [
             'event_id' => 'EVT-STALE-REJECT',
             'provider_reference' => $providerRef,
@@ -136,7 +127,6 @@ class ReconciliationAndCallbacksTest extends TestCase
         $staleResponse->assertStatus(200);
         $this->assertEquals('IGNORED_ALREADY_ISSUED', $staleResponse->json('result.status'));
 
-        // Policy MUST remain ISSUED with original policy number!
         $fresh = $policyRequest->fresh();
         $this->assertEquals('ISSUED', $fresh->status->value);
         $this->assertEquals('POL-LEGIT-1', $fresh->policy_number);
@@ -144,7 +134,7 @@ class ReconciliationAndCallbacksTest extends TestCase
 
     public function test_timeout_after_issue_reconciliation_recovers_original_policy(): void
     {
-        // 1. Create request
+
         $intake = $this->postJson('/api/policy-requests', [
             'client_request_id' => 'REQ-TIMEOUT-RECON-1',
             'agent_id' => 'AGENT-88',
@@ -158,14 +148,10 @@ class ReconciliationAndCallbacksTest extends TestCase
         ]);
         $id = $intake->json('data.id');
 
-        // 2. Submit with TIMEOUT_AFTER_ISSUE scenario
-        // In this scenario, mock insurer creates the policy in mock_insurer_policies,
-        // but simulates network timeout to caller!
         $submitResponse = $this->postJson("/api/policy-requests/{$id}/submit", [
             'scenario' => 'TIMEOUT_AFTER_ISSUE',
         ]);
 
-        // Expect HTTP 202 Accepted (indeterminate state)
         $submitResponse->assertStatus(202)
             ->assertJson([
                 'current_state' => 'NEEDS_RECONCILIATION',
@@ -176,13 +162,11 @@ class ReconciliationAndCallbacksTest extends TestCase
         $this->assertNull($req->policy_number);
         $this->assertNotNull($req->provider_reference);
 
-        // Verify insurer ledger actually has the policy stored independently
         $providerLedgerRecord = MockInsurerPolicy::where('provider_reference', $req->provider_reference)->first();
         $this->assertNotNull($providerLedgerRecord);
         $this->assertEquals('ISSUED', $providerLedgerRecord->status);
         $expectedPolicyNumber = $providerLedgerRecord->policy_number;
 
-        // 3. Trigger Reconciliation
         $reconcileResponse = $this->postJson("/api/policy-requests/{$id}/reconcile");
 
         $reconcileResponse->assertStatus(200)
@@ -194,19 +178,17 @@ class ReconciliationAndCallbacksTest extends TestCase
                 ],
             ]);
 
-        // Verify request is now ISSUED with the EXACT recovered provider policy number
         $fresh = $req->fresh();
         $this->assertEquals('ISSUED', $fresh->status->value);
         $this->assertEquals($expectedPolicyNumber, $fresh->policy_number);
         $this->assertNotNull($fresh->reconciled_at);
 
-        // Verify that only ONE policy exists in mock_insurer_policies for this request (no duplicate creation!)
         $this->assertEquals(1, MockInsurerPolicy::where('client_request_id', 'REQ-TIMEOUT-RECON-1')->count());
     }
 
     public function test_artisan_reconcile_command(): void
     {
-        // Create a request with timeout scenario
+
         $intake = $this->postJson('/api/policy-requests', [
             'client_request_id' => 'REQ-CLI-RECON',
             'agent_id' => 'AGENT-CLI',
@@ -226,7 +208,6 @@ class ReconciliationAndCallbacksTest extends TestCase
 
         $this->assertEquals('NEEDS_RECONCILIATION', PolicyRequest::find($id)->status->value);
 
-        // Run artisan command
         $this->artisan('policyflow:reconcile', ['--id' => $id])
             ->assertExitCode(0);
 
