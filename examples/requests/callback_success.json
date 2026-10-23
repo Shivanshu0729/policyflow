@@ -1,0 +1,7 @@
+{
+  "event_id": "EVT-INSURER-987654",
+  "provider_reference": "MOCK-PROV-SAMPLE123",
+  "status": "ISSUED",
+  "policy_number": "POL-INSU-202611-CONFIRMED",
+  "event_type": "POLICY_ISSUED"
+}

@@ -1,0 +1,141 @@
+{
+  "info": {
+    "name": "PolicyFlow API Collection",
+    "description": "Postman Collection for PolicyFlow: Fault-Tolerant Insurance Issuance & Reconciliation Engine",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "1. Policy Intake (Create New / Retry)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"client_request_id\": \"REQ-CAMPUS-001\",\n  \"agent_id\": \"AGENT-01\",\n  \"customer_name\": \"Aditi Sharma\",\n  \"date_of_birth\": \"1998-04-10\",\n  \"destination\": \"INTERNATIONAL\",\n  \"trip_start\": \"2026-11-10\",\n  \"trip_end\": \"2026-11-14\",\n  \"plan_code\": \"PLUS\",\n  \"sum_insured\": 300000\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/policy-requests",
+          "host": ["{{base_url}}"],
+          "path": ["policy-requests"]
+        }
+      }
+    },
+    {
+      "name": "2. Get Policy Request by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/policy-requests/1",
+          "host": ["{{base_url}}"],
+          "path": ["policy-requests", "1"]
+        }
+      }
+    },
+    {
+      "name": "3. List Policy Requests (Filtered)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/policy-requests?status=VALIDATED&per_page=10",
+          "host": ["{{base_url}}"],
+          "path": ["policy-requests"],
+          "query": [
+            {"key": "status", "value": "VALIDATED"},
+            {"key": "per_page", "value": "10"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Submit Issuance (SUCCESS)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"scenario\": \"SUCCESS\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/policy-requests/1/submit",
+          "host": ["{{base_url}}"],
+          "path": ["policy-requests", "1", "submit"]
+        }
+      }
+    },
+    {
+      "name": "5. Submit Issuance (TIMEOUT_AFTER_ISSUE)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"scenario\": \"TIMEOUT_AFTER_ISSUE\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/policy-requests/1/submit",
+          "host": ["{{base_url}}"],
+          "path": ["policy-requests", "1", "submit"]
+        }
+      }
+    },
+    {
+      "name": "6. Reconcile Policy",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/policy-requests/1/reconcile",
+          "host": ["{{base_url}}"],
+          "path": ["policy-requests", "1", "reconcile"]
+        }
+      }
+    },
+    {
+      "name": "7. Provider Callback (Idempotent Webhook)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event_id\": \"EVT-12345\",\n  \"provider_reference\": \"MOCK-PROV-SAMPLE\",\n  \"status\": \"ISSUED\",\n  \"policy_number\": \"POL-CONFIRMED-999\",\n  \"event_type\": \"POLICY_ISSUED\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/mock-insurer/callback",
+          "host": ["{{base_url}}"],
+          "path": ["mock-insurer", "callback"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "client_request_id": "REQ-CAMPUS-2026-001",
+  "agent_id": "AGENT-NORTH-07",
+  "customer_name": "Aditi Sharma",
+  "date_of_birth": "1998-04-10",
+  "destination": "INTERNATIONAL",
+  "trip_start": "2026-11-10",
+  "trip_end": "2026-11-14",
+  "plan_code": "PLUS",
+  "sum_insured": 300000
+}
