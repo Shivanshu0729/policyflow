@@ -8,8 +8,14 @@
 /database/*.sqlite
 /database/*.sqlite-journal
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
